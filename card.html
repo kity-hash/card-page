@@ -9,21 +9,17 @@
 <title>添加好友</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:24px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
-.page{text-align:center;max-width:420px;width:100%}
-.title{color:#fff;font-size:28px;font-weight:700;margin-bottom:32px;text-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.card{background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.15);margin-bottom:24px}
-.profile{display:flex;align-items:center;gap:14px;margin-bottom:24px;text-align:left}
-.avatar{width:64px;height:64px;border-radius:12px;background:#f3f4f6;flex-shrink:0;overflow:hidden}
-.avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.nickname{font-size:17px;font-weight:600;color:#1f2937;line-height:1.4}
-.region{font-size:13px;color:#9ca3af;margin-top:4px}
-.qr-img{width:100%;max-width:280px;height:auto;display:block;margin:0 auto;border-radius:8px}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:24px;overflow:hidden;background:#1a0a2e}
+#lc-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
+.page{text-align:center;max-width:420px;width:100%;position:relative;z-index:1}
+.title{color:#fff;font-size:28px;font-weight:700;margin-bottom:32px;text-shadow:0 2px 12px rgba(0,0,0,0.4)}
+.card{background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.2);margin-bottom:24px}
+.qr-img{width:100%;max-width:260px;height:auto;display:block;margin:0 auto;border-radius:8px}
 .wx-label{font-size:13px;color:rgba(255,255,255,0.85);margin-bottom:8px}
 .wx-id{font-size:28px;font-weight:700;color:#fff;margin-bottom:24px;word-break:break-all;text-shadow:0 2px 8px rgba(0,0,0,0.2)}
 .btn{display:block;width:100%;padding:14px;background:#07C160;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(7,193,96,0.3)}
-.btn:active{opacity:.85;transform:translateY(1px)}
-.hint{color:rgba(255,255,255,0.9);font-size:13px;margin-top:24px;line-height:1.8;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border-radius:14px;padding:16px 20px}
+.btn:active{opacity:.85}
+.hint{color:rgba(255,255,255,0.9);font-size:13px;margin-top:24px;line-height:1.8;background:rgba(255,255,255,0.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:14px;padding:16px 20px}
 .hint strong{display:block;margin-bottom:8px;font-size:14px}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#fff;padding:14px 28px;border-radius:10px;font-size:15px;opacity:0;transition:opacity .3s;z-index:99;pointer-events:none}
 .toast.show{opacity:1}
@@ -31,86 +27,97 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;fon
 </head>
 <body>
 
+<canvas id="lc-canvas"></canvas>
+
 <div class="page">
   <div class="title">🤝 添加好友</div>
-
   <div class="card">
-    <div class="profile" id="profile" style="display:none">
-      <div class="avatar"><img id="avatar" src="" alt=""></div>
-      <div>
-        <div class="nickname" id="nickname"></div>
-        <div class="region" id="region"></div>
-      </div>
-    </div>
     <img class="qr-img" id="qrImg" src="" alt="微信二维码">
   </div>
-
   <div class="wx-label">微信号</div>
   <div class="wx-id" id="wxId">加载中...</div>
-
   <button class="btn" onclick="copyWx()">📋 复制微信号</button>
-
   <div class="hint">
     <strong>怎么添加？</strong>
     1. 长按二维码 → 识别图中二维码<br>
     2. 或复制微信号 → 微信搜索添加
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var canvas=document.getElementById('lc-canvas');
+  if(!canvas)return;
+  var gl=canvas.getContext('webgl')||canvas.getContext('experimental-webgl');
+  if(!gl)return;
+
+  var vs='attribute vec2 aPos;attribute vec2 aUv;varying vec2 vUv;void main(){vUv=aUv;gl_Position=vec4(aPos,0.0,1.0);}';
+  var fs='precision highp float;uniform float uTime;uniform vec2 uRes;uniform vec3 uBaseColor;uniform float uAmp;uniform vec2 uMouse;varying vec2 vUv;'+
+    'vec3 render(vec2 uv){vec2 p=(uv*2.0-1.0);p.x*=uRes.x/uRes.y;'+
+    'for(float i=1.0;i<9.0;i++){p.x+=uAmp/i*cos(i*3.0*p.y+uTime+uMouse.x*3.14159);p.y+=uAmp/i*cos(i*3.0*p.x+uTime+uMouse.y*3.14159);}'+
+    'vec2 d=uv-uMouse;float dist=length(d);float fall=exp(-dist*18.0);float rip=sin(12.0*dist-uTime*2.5)*0.025;'+
+    'p+=(d/(dist+0.0001))*rip*fall;return uBaseColor/abs(sin(uTime*0.7-p.y*1.5-p.x*1.2));}'+
+    'void main(){vec3 col=vec3(0.0);vec2 px=1.0/uRes;'+
+    'col+=render(vUv+vec2(-px.x,-px.y));col+=render(vUv+vec2(0.0,-px.y));col+=render(vUv+vec2(px.x,-px.y));'+
+    'col+=render(vUv+vec2(-px.x,0.0));col+=render(vUv);col+=render(vUv+vec2(px.x,0.0));'+
+    'col+=render(vUv+vec2(-px.x,px.y));col+=render(vUv+vec2(0.0,px.y));col+=render(vUv+vec2(px.x,px.y));col/=9.0;'+
+    'col=pow(col,vec3(0.9));col=col/(col+vec3(0.45));gl_FragColor=vec4(col,1.0);}';
+
+  function shader(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s;}
+  var vs1=shader(gl.VERTEX_SHADER,vs),fs1=shader(gl.FRAGMENT_SHADER,fs);
+  if(!gl.getShaderParameter(vs1,gl.COMPILE_STATUS)||!gl.getShaderParameter(fs1,gl.COMPILE_STATUS))return;
+  var p=gl.createProgram();gl.attachShader(p,vs1);gl.attachShader(p,fs1);gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))return;gl.useProgram(p);
+  var verts=new Float32Array([-1,-1,0,0,3,-1,2,0,-1,3,0,2]),buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,verts,gl.STATIC_DRAW);
+  var aPos=gl.getAttribLocation(p,'aPos'),aUv=gl.getAttribLocation(p,'aUv');
+  gl.enableVertexAttribArray(aPos);gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,16,0);
+  gl.enableVertexAttribArray(aUv);gl.vertexAttribPointer(aUv,2,gl.FLOAT,false,16,8);
+  var uTime=gl.getUniformLocation(p,'uTime'),uRes=gl.getUniformLocation(p,'uRes'),
+    uBaseColor=gl.getUniformLocation(p,'uBaseColor'),uAmp=gl.getUniformLocation(p,'uAmp'),
+    uMouse=gl.getUniformLocation(p,'uMouse');
+  gl.uniform3f(uBaseColor,0.30,0.13,0.55);gl.uniform1f(uAmp,0.28);gl.uniform2f(uMouse,0.5,0.5);
+  function resize(){var w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';
+    gl.viewport(0,0,canvas.width,canvas.height);gl.uniform2f(uRes,canvas.width,canvas.height);}
+  window.addEventListener('resize',resize);resize();
+  function onMove(x,y){gl.uniform2f(uMouse,x/canvas.offsetWidth,1-y/canvas.offsetHeight);}
+  document.addEventListener('mousemove',function(e){onMove(e.clientX,e.clientY)});
+  document.addEventListener('touchmove',function(e){if(e.touches.length>0)onMove(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+  var start=null;function frame(ts){if(!start)start=ts;
+    gl.uniform1f(uTime,(ts-start)/1000*0.35);gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(frame);}
+  requestAnimationFrame(frame);
+})();
+</script>
 
 <script>
 var p=new URLSearchParams(location.search);
 var wxId=p.get('wx')||'未设置';
 var imgUrl=p.get('img');
-var nickname=p.get('nickname')||'';
-var avatar=p.get('avatar')||'';
-var region=p.get('region')||'';
-
 document.getElementById('wxId').textContent=wxId;
-
-// 显示用户资料（可选）
-if(nickname||avatar||region){
-  document.getElementById('nickname').textContent=nickname||'微信好友';
-  document.getElementById('region').textContent=region||'';
-  if(avatar)document.getElementById('avatar').src=avatar;
-  document.getElementById('profile').style.display='flex';
-}
-
-// 显示二维码（核心 - 用 fetch 绕开防盗链）
 if(imgUrl){
-  fetch(imgUrl,{referrerPolicy:'no-referrer',mode:'cors'}).then(function(r){
-    if(!r.ok)throw 0;
-    return r.blob();
+  fetch(imgUrl,{referrerPolicy:'no-referrer'}).then(function(r){
+    if(!r.ok)throw 0;return r.blob();
   }).then(function(blob){
     document.getElementById('qrImg').src=URL.createObjectURL(blob);
   }).catch(function(){
-    // 失败时降级：用 qrserver 生成 wxId 的二维码
     document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(wxId);
   });
 }else{
   document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(wxId);
 }
-
 function copyWx(){
   var id=document.getElementById('wxId').textContent;
   if(id==='未设置')return;
-  if(navigator.clipboard){navigator.clipboard.writeText(id).then(show).catch(fallback)}
+  if(navigator.clipboard){navigator.clipboard.writeText(id).then(function(){show()}).catch(fallback)}
   else fallback();
-  function fallback(){
-    var ta=document.createElement('textarea');
-    ta.value=id;document.body.appendChild(ta);
-    ta.select();document.execCommand('copy');
-    document.body.removeChild(ta);show();
-  }
+  function fallback(){var ta=document.createElement('textarea');ta.value=id;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);show()}
 }
 function show(){
-  var t=document.getElementById('toast');
-  t.textContent='已复制！打开微信 → 添加朋友 → 粘贴搜索';
-  t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show')},2500);
+  var t=document.getElementById('toast');t.textContent='已复制！打开微信 → 添加朋友 → 粘贴搜索';
+  t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500);
 }
 </script>
-
 </body>
 </html>
