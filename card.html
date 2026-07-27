@@ -97,6 +97,7 @@ var wxId=p.get('wx')||'未设置';
 var imgUrl=p.get('img');
 document.getElementById('wxId').textContent=wxId;
 if(imgUrl){
+  if(imgUrl.indexOf('http')!==0)imgUrl='https://raw.githubusercontent.com/kity-hash/card-page/main/'+imgUrl;
   (function loadImg(n){
     fetch(imgUrl,{referrerPolicy:'no-referrer'}).then(function(r){
       if(!r.ok)throw 0;return r.blob();
