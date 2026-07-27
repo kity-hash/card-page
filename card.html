@@ -97,13 +97,16 @@ var wxId=p.get('wx')||'未设置';
 var imgUrl=p.get('img');
 document.getElementById('wxId').textContent=wxId;
 if(imgUrl){
-  fetch(imgUrl,{referrerPolicy:'no-referrer'}).then(function(r){
-    if(!r.ok)throw 0;return r.blob();
-  }).then(function(blob){
-    document.getElementById('qrImg').src=URL.createObjectURL(blob);
-  }).catch(function(){
-    document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(wxId);
-  });
+  (function loadImg(retry){
+    fetch(imgUrl,{referrerPolicy:'no-referrer'}).then(function(r){
+      if(!r.ok)throw 0;return r.blob();
+    }).then(function(blob){
+      document.getElementById('qrImg').src=URL.createObjectURL(blob);
+    }).catch(function(){
+      if(retry){setTimeout(function(){loadImg(false)},3000)}
+      else document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(wxId);
+    });
+  })(true);
 }else{
   document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(wxId);
 }
