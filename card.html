@@ -46,7 +46,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;fon
 <div class="toast" id="toast"></div>
 
 <script>
-(function(){
+try{(function(){
   var canvas=document.getElementById('lc-canvas');
   if(!canvas)return;
   var gl=canvas.getContext('webgl')||canvas.getContext('experimental-webgl');
@@ -88,7 +88,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;fon
   var start=null;function frame(ts){if(!start)start=ts;
     gl.uniform1f(uTime,(ts-start)/1000*0.35);gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(frame);}
   requestAnimationFrame(frame);
-})();
+})();}catch(e){}
 </script>
 
 <script>
